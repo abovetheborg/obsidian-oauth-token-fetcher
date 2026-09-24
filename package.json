@@ -1,0 +1,27 @@
+{
+  "name": "obsidian-oauth-token-fetcher",
+  "version": "1.0.0",
+  "description": "Periodically fetches an OAuth2 client-credentials token and stores it in Obsidian's SecretStorage.",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/node": "^20.14.9",
+    "builtin-modules": "^3.3.0",
+    "esbuild": "^0.21.5",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "obsidian": "latest",
+    "ts-jest": "^29.2.5",
+    "tslib": "2.6.2",
+    "typescript": "^5.5.3"
+  }
+}

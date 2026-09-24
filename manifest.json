@@ -1,0 +1,10 @@
+{
+  "id": "oauth-token-fetcher",
+  "name": "OAuth Token Fetcher",
+  "version": "1.0.0",
+  "minAppVersion": "1.9.0",
+  "description": "Periodically fetches an OAuth2 client-credentials token and stores it in Obsidian's SecretStorage so other plugins can use it.",
+  "author": "",
+  "authorUrl": "",
+  "isDesktopOnly": false
+}
