@@ -76,6 +76,28 @@ export class OAuthTokenFetcherSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
+			.setName("Plugin to reload")
+			.setDesc("Reload this plugin after each token refresh so it picks up the new token")
+			.addDropdown((dropdown) => {
+				dropdown.addOption("", "None");
+				for (const p of this.plugin.listReloadablePlugins()) dropdown.addOption(p.id, p.name);
+				dropdown.setValue(this.plugin.settings.reloadPluginId).onChange(async (value) => {
+					this.plugin.settings.reloadPluginId = value;
+					await this.plugin.saveSettings();
+				});
+			});
+
+		new Setting(containerEl)
+			.setName("Confirm before reloading")
+			.setDesc("Ask for confirmation before reloading the plugin")
+			.addToggle((toggle) =>
+				toggle.setValue(this.plugin.settings.confirmBeforeReload).onChange(async (value) => {
+					this.plugin.settings.confirmBeforeReload = value;
+					await this.plugin.saveSettings();
+				}),
+			);
+
+		new Setting(containerEl)
 			.setName("Fetch now")
 			.setDesc("Manually trigger a token refresh")
 			.addButton((button) =>

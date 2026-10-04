@@ -67,6 +67,50 @@ export class ButtonComponent {
 	}
 }
 
+export class DropdownComponent {
+	selectEl: HTMLSelectElement;
+
+	constructor(containerEl: HTMLElement) {
+		this.selectEl = document.createElement("select");
+		containerEl.appendChild(this.selectEl);
+	}
+
+	addOption(value: string, display: string) {
+		const option = document.createElement("option");
+		option.value = value;
+		option.textContent = display;
+		this.selectEl.appendChild(option);
+		return this;
+	}
+	setValue(value: string) {
+		this.selectEl.value = value;
+		return this;
+	}
+	onChange(cb: (value: string) => void) {
+		this.selectEl.addEventListener("change", () => cb(this.selectEl.value));
+		return this;
+	}
+}
+
+export class ToggleComponent {
+	inputEl: HTMLInputElement;
+
+	constructor(containerEl: HTMLElement) {
+		this.inputEl = document.createElement("input");
+		this.inputEl.type = "checkbox";
+		containerEl.appendChild(this.inputEl);
+	}
+
+	setValue(value: boolean) {
+		this.inputEl.checked = value;
+		return this;
+	}
+	onChange(cb: (value: boolean) => void) {
+		this.inputEl.addEventListener("change", () => cb(this.inputEl.checked));
+		return this;
+	}
+}
+
 /** Stand-in for the real SecretComponent dropdown; uses a plain input for simplicity. */
 export class SecretComponent {
 	inputEl: HTMLInputElement;
@@ -125,6 +169,14 @@ export class Setting {
 	}
 	addButton(cb: (component: ButtonComponent) => void) {
 		cb(new ButtonComponent(this.controlEl));
+		return this;
+	}
+	addDropdown(cb: (component: DropdownComponent) => void) {
+		cb(new DropdownComponent(this.controlEl));
+		return this;
+	}
+	addToggle(cb: (component: ToggleComponent) => void) {
+		cb(new ToggleComponent(this.controlEl));
 		return this;
 	}
 	addComponent<T>(factory: (el: HTMLElement) => T) {

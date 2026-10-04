@@ -13,6 +13,7 @@ function makeFakePlugin() {
 		saveSettings: jest.fn().mockResolvedValue(undefined),
 		rescheduleTokenRefresh: jest.fn(),
 		fetchTokenNow: jest.fn().mockResolvedValue(undefined),
+		listReloadablePlugins: jest.fn().mockReturnValue([{ id: "demo", name: "Demo" }]),
 	};
 }
 
@@ -48,8 +49,28 @@ describe("OAuthTokenFetcherSettingTab", () => {
 			"Client secret",
 			"Target secret",
 			"Refresh interval (minutes)",
+			"Plugin to reload",
+			"Confirm before reloading",
 			"Fetch now",
 		]);
+	});
+
+	it("saves the chosen plugin to reload and the confirmation toggle", async () => {
+		const { tab, plugin } = render();
+		const rows = tab.containerEl.querySelectorAll(".setting-item");
+		const select = rows[5].querySelector("select") as HTMLSelectElement;
+		const toggle = rows[6].querySelector("input") as HTMLInputElement;
+
+		expect(Array.from(select.options).map((o) => o.value)).toEqual(["", "demo"]);
+
+		select.value = "demo";
+		select.dispatchEvent(new Event("change"));
+		toggle.checked = false;
+		toggle.dispatchEvent(new Event("change"));
+		await flushMicrotasks();
+
+		expect(plugin.settings.reloadPluginId).toBe("demo");
+		expect(plugin.settings.confirmBeforeReload).toBe(false);
 	});
 
 	it("updates tokenUrl and saves settings when the user types a new Token URL", async () => {
@@ -94,7 +115,7 @@ describe("OAuthTokenFetcherSettingTab", () => {
 	it("triggers an immediate fetch when the Fetch now button is clicked", () => {
 		const { tab, plugin } = render();
 		const rows = tab.containerEl.querySelectorAll(".setting-item");
-		const fetchButton = rows[5].querySelector("button") as HTMLButtonElement;
+		const fetchButton = rows[7].querySelector("button") as HTMLButtonElement;
 
 		fetchButton.click();
 
