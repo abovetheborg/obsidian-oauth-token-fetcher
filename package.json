@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "mock-server": "node demo/mock-oauth-server.mjs",
     "test": "jest",
     "test:watch": "jest --watch"
   },
