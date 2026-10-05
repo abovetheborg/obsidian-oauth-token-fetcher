@@ -45,14 +45,20 @@ npm run build   # type-check + production build
 
 ## Releasing
 
-1. `npm version patch` (or `minor`/`major`) bumps `package.json`, `manifest.json`
-   and `versions.json`, commits, and creates a tag matching the version (no `v` prefix).
-2. `git push --follow-tags` triggers `.github/workflows/release.yml`, which runs
-   the tests, builds, and publishes a GitHub release with `main.js` and `manifest.json`.
-3. First submission only: open a PR adding an entry to `community-plugins.json` in
-   [obsidianmd/obsidian-releases](https://github.com/obsidianmd/obsidian-releases)
-   (`id`, `name`, `author`, `description`, `repo`) and follow its checklist.
-   Later versions are picked up from new GitHub releases automatically.
+Commit your changes first so the working tree is clean, then run:
+
+```bash
+npm version patch   # or minor / major
+git push --follow-tags
+```
+
+`npm version` updates `package.json`, `manifest.json`, and `versions.json`, then
+creates a commit and matching version tag (without a `v` prefix). Pushing the
+commit and tag runs `.github/workflows/release.yml`, which tests, builds,
+attests, and publishes a GitHub release with `main.js` and `manifest.json`.
+For the first submission only, add the plugin through the
+[Obsidian Community directory](https://community.obsidian.md/) account page.
+Subsequent releases are scanned automatically.
 
 ## Testing
 
