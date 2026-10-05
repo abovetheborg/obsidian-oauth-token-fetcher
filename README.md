@@ -26,6 +26,15 @@ The command palette entry `Fetch all OAuth tokens now` refreshes every
 connection. Settings saved by older versions (a single flat connection) are
 migrated automatically into one connection named "Default".
 
+## Network use and privacy
+
+The plugin sends a `client_credentials` request (client ID and client secret)
+only to the Token URL you configure on each connection. Client secrets and
+fetched tokens are stored in Obsidian's SecretStorage, never in the plugin's
+`data.json`. No telemetry or other network requests are made. "Plugin to
+reload" uses Obsidian's internal plugin manager (not a public API) to disable
+and re-enable the chosen plugin.
+
 ## Development
 
 ```bash
@@ -33,6 +42,17 @@ npm install
 npm run dev     # watch build with esbuild
 npm run build   # type-check + production build
 ```
+
+## Releasing
+
+1. `npm version patch` (or `minor`/`major`) bumps `package.json`, `manifest.json`
+   and `versions.json`, commits, and creates a tag matching the version (no `v` prefix).
+2. `git push --follow-tags` triggers `.github/workflows/release.yml`, which runs
+   the tests, builds, and publishes a GitHub release with `main.js` and `manifest.json`.
+3. First submission only: open a PR adding an entry to `community-plugins.json` in
+   [obsidianmd/obsidian-releases](https://github.com/obsidianmd/obsidian-releases)
+   (`id`, `name`, `author`, `description`, `repo`) and follow its checklist.
+   Later versions are picked up from new GitHub releases automatically.
 
 ## Testing
 

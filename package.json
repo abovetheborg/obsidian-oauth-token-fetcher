@@ -8,10 +8,11 @@
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
     "mock-server": "node demo/mock-oauth-server.mjs",
     "test": "jest",
+    "version": "node version-bump.mjs && git add manifest.json versions.json",
     "test:watch": "jest --watch"
   },
   "keywords": [],
-  "author": "",
+  "author": "abovetheborg",
   "license": "MIT",
   "devDependencies": {
     "@types/jest": "^29.5.14",
