@@ -5,6 +5,7 @@ import {
 	PluginSettingTab,
 	SecretComponent,
 	Setting,
+	SettingDefinitionItem,
 	TextComponent,
 	ToggleComponent,
 } from "obsidian";
@@ -28,48 +29,46 @@ export class OAuthTokenFetcherSettingTab extends PluginSettingTab {
 		super(app, plugin);
 	}
 
-	display(): void {
-		const { containerEl } = this;
-		containerEl.empty();
+	getSettingDefinitions(): SettingDefinitionItem[] {
+		return [
+			{
+				name: "Connections",
+				desc: "Manage OAuth token requests and optional plugin reloads.",
+				render: (setting) => this.renderConnections(setting),
+			},
+		];
+	}
 
-		new Setting(containerEl)
-			.setName("Connections")
-			.setDesc(
-				"Each connection fetches an OAuth2 client_credentials token into its target secret and can reload a plugin afterwards",
-			)
-			.addButton((button) =>
-				button.setButtonText("Add connection").onClick(async () => {
-					this.plugin.settings.connections.push(newConnection());
-					await this.plugin.saveSettings();
-					this.plugin.rescheduleTokenRefresh();
-					this.display();
-				}),
-			)
-			.addButton((button) =>
-				button.setButtonText("Fetch all now").onClick(async () => {
-					await this.plugin.fetchAllNow();
-				}),
-			);
+	private renderConnections(setting: Setting): void {
+			new Setting(setting.controlEl)
+				.setName("Connections")
+				.addButton((button) =>
+					button.setButtonText("Add connection").onClick(async () => {
+						this.plugin.settings.connections.push(newConnection());
+						await this.plugin.saveSettings();
+						this.plugin.rescheduleTokenRefresh();
+						this.update();
+					}),
+				)
+				.addButton((button) =>
+					button.setButtonText("Fetch all now").onClick(async () => {
+						await this.plugin.fetchAllNow();
+					}),
+				);
 
-		const doc = containerEl.ownerDocument;
-		const wrapper = containerEl.appendChild(doc.createElement("div"));
-		wrapper.style.overflowX = "auto";
-		const table = wrapper.appendChild(doc.createElement("table"));
-		const headRow = table.appendChild(doc.createElement("thead")).appendChild(doc.createElement("tr"));
-		for (const title of COLUMNS) {
-			headRow.appendChild(doc.createElement("th")).textContent = title;
-		}
+			const wrapper = setting.controlEl.createDiv();
+			wrapper.setCssStyles({ overflowX: "auto" });
+			const table = wrapper.createEl("table");
+			const headRow = table.createEl("thead").createEl("tr");
+			for (const title of COLUMNS) headRow.createEl("th", { text: title });
 
-		const tbody = table.appendChild(doc.createElement("tbody"));
-		for (const connection of this.plugin.settings.connections) {
-			this.renderRow(tbody, connection);
-		}
+			const tbody = table.createEl("tbody");
+			for (const connection of this.plugin.settings.connections) this.renderRow(tbody, connection);
 	}
 
 	private renderRow(tbody: HTMLElement, connection: Connection): void {
-		const doc = tbody.ownerDocument;
-		const row = tbody.appendChild(doc.createElement("tr"));
-		const cell = () => row.appendChild(doc.createElement("td"));
+			const row = tbody.createEl("tr");
+			const cell = () => row.createEl("td");
 		const save = () => this.plugin.saveSettings();
 
 		const textCell = (key: "name" | "tokenUrl" | "clientId", placeholder = "") =>
@@ -119,12 +118,12 @@ export class OAuthTokenFetcherSettingTab extends PluginSettingTab {
 		new ButtonComponent(actions).setButtonText("Fetch").onClick(async () => {
 			await this.plugin.fetchTokenNow(connection.id);
 		});
-		new ButtonComponent(actions).setButtonText("Delete").setWarning().onClick(async () => {
+		new ButtonComponent(actions).setButtonText("Delete").setDestructive().onClick(async () => {
 			const { connections } = this.plugin.settings;
 			connections.splice(connections.indexOf(connection), 1);
 			await save();
 			this.plugin.rescheduleTokenRefresh();
-			this.display();
+			this.update();
 		});
 	}
 }

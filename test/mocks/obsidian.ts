@@ -13,11 +13,39 @@ if (!(HTMLElement.prototype as any).empty) {
 
 export class App {}
 
+if (!(HTMLElement.prototype as any).createEl) {
+	(HTMLElement.prototype as any).createEl = function (
+		this: HTMLElement,
+		tag: string,
+		options?: { text?: string; cls?: string },
+	) {
+		const element = this.ownerDocument.createElement(tag);
+		if (options?.text) element.textContent = options.text;
+		if (options?.cls) element.className = options.cls;
+		this.appendChild(element);
+		return element;
+	};
+}
+if (!(HTMLElement.prototype as any).createDiv) {
+	(HTMLElement.prototype as any).createDiv = function (this: HTMLElement, options?: { cls?: string }) {
+		return (this as any).createEl("div", options);
+	};
+}
+if (!(HTMLElement.prototype as any).setCssStyles) {
+	(HTMLElement.prototype as any).setCssStyles = function (
+		this: HTMLElement,
+		styles: Partial<CSSStyleDeclaration>,
+	) {
+		Object.assign(this.style, styles);
+	};
+}
+
 export class PluginSettingTab {
 	containerEl: HTMLElement;
 	constructor(public app: App, public plugin: unknown) {
 		this.containerEl = document.createElement("div");
 	}
+	update() {}
 }
 
 export class TextComponent {
@@ -65,7 +93,7 @@ export class ButtonComponent {
 		this.clickCb = cb;
 		return this;
 	}
-	setWarning() {
+	setDestructive() {
 		return this;
 	}
 }

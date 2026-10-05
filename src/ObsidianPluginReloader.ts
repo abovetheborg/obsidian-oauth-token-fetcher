@@ -9,11 +9,27 @@ interface InternalPluginManager {
 	enablePlugin(id: string): Promise<void>;
 }
 
+function isPluginManager(value: unknown): value is InternalPluginManager {
+	if (typeof value !== "object" || value === null) return false;
+	const candidate = value as Record<string, unknown>;
+	return (
+		typeof candidate.manifests === "object" &&
+		candidate.manifests !== null &&
+		candidate.enabledPlugins instanceof Set &&
+		typeof candidate.disablePlugin === "function" &&
+		typeof candidate.enablePlugin === "function"
+	);
+}
+
 export class ObsidianPluginReloader implements PluginReloader {
 	constructor(private readonly app: App, private readonly selfId: string) {}
 
 	private get manager(): InternalPluginManager {
-		return (this.app as unknown as { plugins: InternalPluginManager }).plugins;
+		const plugins = (this.app as unknown as { plugins: unknown }).plugins;
+		if (!isPluginManager(plugins)) {
+			throw new Error("Obsidian's plugin manager API is unavailable or has changed.");
+		}
+		return plugins;
 	}
 
 	listPlugins(): InstalledPlugin[] {

@@ -1,6 +1,7 @@
 /**
  * @jest-environment jsdom
  */
+import { Setting } from "obsidian";
 import { OAuthTokenFetcherSettingTab } from "../src/SettingsTab";
 import { Connection, newConnection } from "../src/settings";
 import type OAuthTokenFetcherPlugin from "../src/main";
@@ -37,7 +38,15 @@ describe("OAuthTokenFetcherSettingTab", () => {
 	function render(connections: Connection[] = [newConnection()]) {
 		const plugin = makeFakePlugin(connections);
 		const tab = new OAuthTokenFetcherSettingTab({} as any, plugin as unknown as OAuthTokenFetcherPlugin);
-		tab.display();
+		const rerender = () => {
+			tab.containerEl.empty();
+			const definition = tab.getSettingDefinitions()[0] as unknown as {
+				render: (setting: Setting) => void;
+			};
+			definition.render(new Setting(tab.containerEl));
+		};
+		jest.spyOn(tab, "update").mockImplementation(rerender);
+		rerender();
 		return { plugin, tab };
 	}
 

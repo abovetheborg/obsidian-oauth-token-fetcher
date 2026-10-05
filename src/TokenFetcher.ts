@@ -20,7 +20,7 @@ export interface Logger {
 }
 
 export const consoleLogger: Logger = {
-	info: (message) => console.info(`[oauth-token-fetcher] ${message}`),
+	info: () => undefined,
 	error: (message, error) => console.error(`[oauth-token-fetcher] ${message}`, error ?? ""),
 };
 
