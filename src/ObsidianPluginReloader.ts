@@ -34,10 +34,14 @@ export class ObsidianPluginReloader implements PluginReloader {
 
 	listPlugins(): InstalledPlugin[] {
 		const { manifests, enabledPlugins } = this.manager;
-		return Object.values(manifests)
-			.filter((m) => m.id !== this.selfId && enabledPlugins.has(m.id))
-			.map((m) => ({ id: m.id, name: m.name }))
-			.sort((a, b) => a.name.localeCompare(b.name));
+		const installed: InstalledPlugin[] = [];
+		for (const manifestId of Object.keys(manifests)) {
+			const manifest = manifests[manifestId];
+			if (manifest && manifest.id !== this.selfId && enabledPlugins.has(manifest.id)) {
+				installed.push({ id: manifest.id, name: manifest.name });
+			}
+		}
+		return installed.sort((a, b) => a.name.localeCompare(b.name));
 	}
 
 	async reload(pluginId: string): Promise<void> {
