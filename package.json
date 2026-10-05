@@ -1,6 +1,6 @@
 {
   "name": "obsidian-oauth-token-fetcher",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Periodically fetches an OAuth2 client-credentials token and stores it in Obsidian's SecretStorage.",
   "main": "main.js",
   "scripts": {
