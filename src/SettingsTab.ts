@@ -1,5 +1,27 @@
-import { App, PluginSettingTab, SecretComponent, Setting } from "obsidian";
+import {
+	App,
+	ButtonComponent,
+	DropdownComponent,
+	PluginSettingTab,
+	SecretComponent,
+	Setting,
+	TextComponent,
+	ToggleComponent,
+} from "obsidian";
 import type OAuthTokenFetcherPlugin from "./main";
+import { Connection, newConnection } from "./settings";
+
+const COLUMNS = [
+	"Name",
+	"Token URL",
+	"Client ID",
+	"Client secret",
+	"Target secret",
+	"Refresh (min)",
+	"Plugin to reload",
+	"Confirm reload",
+	"",
+];
 
 export class OAuthTokenFetcherSettingTab extends PluginSettingTab {
 	constructor(app: App, private readonly plugin: OAuthTokenFetcherPlugin) {
@@ -11,99 +33,98 @@ export class OAuthTokenFetcherSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName("Token URL")
-			.setDesc("OAuth2 token endpoint (client_credentials grant)")
-			.addText((text) =>
-				text
-					.setPlaceholder("https://internal.example.com/oauth/token")
-					.setValue(this.plugin.settings.tokenUrl)
-					.onChange(async (value) => {
-						this.plugin.settings.tokenUrl = value.trim();
-						await this.plugin.saveSettings();
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName("Client ID")
-			.setDesc("OAuth2 client_id")
-			.addText((text) =>
-				text
-					.setValue(this.plugin.settings.clientId)
-					.onChange(async (value) => {
-						this.plugin.settings.clientId = value.trim();
-						await this.plugin.saveSettings();
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName("Client secret")
-			.setDesc("Select the SecretStorage entry holding the OAuth2 client_secret")
-			.addComponent((el) =>
-				new SecretComponent(this.app, el)
-					.setValue(this.plugin.settings.clientSecretName)
-					.onChange(async (value) => {
-						this.plugin.settings.clientSecretName = value;
-						await this.plugin.saveSettings();
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName("Target secret")
-			.setDesc("SecretStorage entry the refreshed access token is written to (other plugins read this)")
-			.addComponent((el) =>
-				new SecretComponent(this.app, el)
-					.setValue(this.plugin.settings.targetSecretName)
-					.onChange(async (value) => {
-						this.plugin.settings.targetSecretName = value;
-						await this.plugin.saveSettings();
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName("Refresh interval (minutes)")
-			.setDesc("How often to fetch a new token")
-			.addText((text) =>
-				text
-					.setValue(String(this.plugin.settings.refreshIntervalMinutes))
-					.onChange(async (value) => {
-						const minutes = Number(value);
-						if (Number.isFinite(minutes) && minutes > 0) {
-							this.plugin.settings.refreshIntervalMinutes = minutes;
-							await this.plugin.saveSettings();
-							this.plugin.rescheduleTokenRefresh();
-						}
-					}),
-			);
-
-		new Setting(containerEl)
-			.setName("Plugin to reload")
-			.setDesc("Reload this plugin after each token refresh so it picks up the new token")
-			.addDropdown((dropdown) => {
-				dropdown.addOption("", "None");
-				for (const p of this.plugin.listReloadablePlugins()) dropdown.addOption(p.id, p.name);
-				dropdown.setValue(this.plugin.settings.reloadPluginId).onChange(async (value) => {
-					this.plugin.settings.reloadPluginId = value;
+			.setName("Connections")
+			.setDesc(
+				"Each connection fetches an OAuth2 client_credentials token into its target secret and can reload a plugin afterwards",
+			)
+			.addButton((button) =>
+				button.setButtonText("Add connection").onClick(async () => {
+					this.plugin.settings.connections.push(newConnection());
 					await this.plugin.saveSettings();
+					this.plugin.rescheduleTokenRefresh();
+					this.display();
+				}),
+			)
+			.addButton((button) =>
+				button.setButtonText("Fetch all now").onClick(async () => {
+					await this.plugin.fetchAllNow();
+				}),
+			);
+
+		const doc = containerEl.ownerDocument;
+		const wrapper = containerEl.appendChild(doc.createElement("div"));
+		wrapper.style.overflowX = "auto";
+		const table = wrapper.appendChild(doc.createElement("table"));
+		const headRow = table.appendChild(doc.createElement("thead")).appendChild(doc.createElement("tr"));
+		for (const title of COLUMNS) {
+			headRow.appendChild(doc.createElement("th")).textContent = title;
+		}
+
+		const tbody = table.appendChild(doc.createElement("tbody"));
+		for (const connection of this.plugin.settings.connections) {
+			this.renderRow(tbody, connection);
+		}
+	}
+
+	private renderRow(tbody: HTMLElement, connection: Connection): void {
+		const doc = tbody.ownerDocument;
+		const row = tbody.appendChild(doc.createElement("tr"));
+		const cell = () => row.appendChild(doc.createElement("td"));
+		const save = () => this.plugin.saveSettings();
+
+		const textCell = (key: "name" | "tokenUrl" | "clientId", placeholder = "") =>
+			new TextComponent(cell())
+				.setPlaceholder(placeholder)
+				.setValue(connection[key])
+				.onChange(async (value) => {
+					connection[key] = value.trim();
+					await save();
 				});
+
+		textCell("name", "My API");
+		textCell("tokenUrl", "https://example.com/oauth/token");
+		textCell("clientId");
+
+		for (const key of ["clientSecretName", "targetSecretName"] as const) {
+			new SecretComponent(this.app, cell()).setValue(connection[key]).onChange(async (value) => {
+				connection[key] = value;
+				await save();
+			});
+		}
+
+		new TextComponent(cell())
+			.setValue(String(connection.refreshIntervalMinutes))
+			.onChange(async (value) => {
+				const minutes = Number(value);
+				if (Number.isFinite(minutes) && minutes > 0) {
+					connection.refreshIntervalMinutes = minutes;
+					await save();
+					this.plugin.rescheduleTokenRefresh();
+				}
 			});
 
-		new Setting(containerEl)
-			.setName("Confirm before reloading")
-			.setDesc("Ask for confirmation before reloading the plugin")
-			.addToggle((toggle) =>
-				toggle.setValue(this.plugin.settings.confirmBeforeReload).onChange(async (value) => {
-					this.plugin.settings.confirmBeforeReload = value;
-					await this.plugin.saveSettings();
-				}),
-			);
+		const dropdown = new DropdownComponent(cell()).addOption("", "None");
+		for (const p of this.plugin.listReloadablePlugins()) dropdown.addOption(p.id, p.name);
+		dropdown.setValue(connection.reloadPluginId).onChange(async (value) => {
+			connection.reloadPluginId = value;
+			await save();
+		});
 
-		new Setting(containerEl)
-			.setName("Fetch now")
-			.setDesc("Manually trigger a token refresh")
-			.addButton((button) =>
-				button.setButtonText("Fetch now").onClick(async () => {
-					await this.plugin.fetchTokenNow();
-				}),
-			);
+		new ToggleComponent(cell()).setValue(connection.confirmBeforeReload).onChange(async (value) => {
+			connection.confirmBeforeReload = value;
+			await save();
+		});
+
+		const actions = cell();
+		new ButtonComponent(actions).setButtonText("Fetch").onClick(async () => {
+			await this.plugin.fetchTokenNow(connection.id);
+		});
+		new ButtonComponent(actions).setButtonText("Delete").setWarning().onClick(async () => {
+			const { connections } = this.plugin.settings;
+			connections.splice(connections.indexOf(connection), 1);
+			await save();
+			this.plugin.rescheduleTokenRefresh();
+			this.display();
+		});
 	}
 }

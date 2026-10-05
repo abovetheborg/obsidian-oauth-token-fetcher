@@ -2,17 +2,18 @@
  * @jest-environment jsdom
  */
 import { OAuthTokenFetcherSettingTab } from "../src/SettingsTab";
-import { DEFAULT_SETTINGS, OAuthTokenFetcherSettings } from "../src/settings";
+import { Connection, newConnection } from "../src/settings";
 import type OAuthTokenFetcherPlugin from "../src/main";
 
 /** Fake plugin: only the surface SettingsTab.ts actually touches. */
-function makeFakePlugin() {
+function makeFakePlugin(connections: Connection[]) {
 	return {
 		app: {},
-		settings: { ...DEFAULT_SETTINGS } as OAuthTokenFetcherSettings,
+		settings: { connections },
 		saveSettings: jest.fn().mockResolvedValue(undefined),
 		rescheduleTokenRefresh: jest.fn(),
 		fetchTokenNow: jest.fn().mockResolvedValue(undefined),
+		fetchAllNow: jest.fn().mockResolvedValue(undefined),
 		listReloadablePlugins: jest.fn().mockReturnValue([{ id: "demo", name: "Demo" }]),
 	};
 }
@@ -22,103 +23,141 @@ function setInputValue(input: HTMLInputElement, value: string) {
 	input.dispatchEvent(new Event("input"));
 }
 
-function setSecretValue(input: HTMLInputElement, value: string) {
-	input.value = value;
-	input.dispatchEvent(new Event("change"));
+function fire(el: HTMLElement, type: string) {
+	el.dispatchEvent(new Event(type));
 }
 
-/** The settings tab's onChange handlers are async (they await saveSettings()); let them settle. */
+/** The tab's onChange handlers are async (they await saveSettings()); let them settle. */
 const flushMicrotasks = () => Promise.resolve().then(() => Promise.resolve());
 
+// Column order in each table row.
+const COL = { name: 0, url: 1, clientId: 2, clientSecret: 3, target: 4, interval: 5, plugin: 6, confirm: 7, actions: 8 };
+
 describe("OAuthTokenFetcherSettingTab", () => {
-	function render() {
-		const plugin = makeFakePlugin();
+	function render(connections: Connection[] = [newConnection()]) {
+		const plugin = makeFakePlugin(connections);
 		const tab = new OAuthTokenFetcherSettingTab({} as any, plugin as unknown as OAuthTokenFetcherPlugin);
 		tab.display();
 		return { plugin, tab };
 	}
 
-	it("renders one setting row per configuration field plus the fetch-now button", () => {
-		const { tab } = render();
+	const rows = (tab: OAuthTokenFetcherSettingTab) => Array.from(tab.containerEl.querySelectorAll("tbody tr"));
+	const cell = (row: Element, index: number) => row.children[index] as HTMLElement;
+	const button = (root: Element, text: string) =>
+		Array.from(root.querySelectorAll("button")).find((b) => b.textContent === text) as HTMLButtonElement;
 
-		const names = Array.from(tab.containerEl.querySelectorAll(".setting-item-name")).map((el) => el.textContent);
+	it("renders a table header and one row per connection", () => {
+		const { tab } = render([newConnection(), newConnection()]);
 
-		expect(names).toEqual([
+		const headers = Array.from(tab.containerEl.querySelectorAll("th")).map((th) => th.textContent);
+
+		expect(headers).toEqual([
+			"Name",
 			"Token URL",
 			"Client ID",
 			"Client secret",
 			"Target secret",
-			"Refresh interval (minutes)",
+			"Refresh (min)",
 			"Plugin to reload",
-			"Confirm before reloading",
-			"Fetch now",
+			"Confirm reload",
+			"",
 		]);
+		expect(rows(tab)).toHaveLength(2);
+	});
+
+	it("updates the right connection and saves when the user types a Token URL", async () => {
+		const { tab, plugin } = render([newConnection(), newConnection()]);
+
+		setInputValue(cell(rows(tab)[1], COL.url).querySelector("input")!, "https://example.com/token");
+		await flushMicrotasks();
+
+		expect(plugin.settings.connections[0].tokenUrl).toBe("");
+		expect(plugin.settings.connections[1].tokenUrl).toBe("https://example.com/token");
+		expect(plugin.saveSettings).toHaveBeenCalledTimes(1);
+	});
+
+	it("updates the secret names when secrets are selected", async () => {
+		const { tab, plugin } = render();
+		const row = rows(tab)[0];
+
+		const clientSecret = cell(row, COL.clientSecret).querySelector("input") as HTMLInputElement;
+		clientSecret.value = "my-client-secret";
+		fire(clientSecret, "change");
+		const target = cell(row, COL.target).querySelector("input") as HTMLInputElement;
+		target.value = "my-target";
+		fire(target, "change");
+		await flushMicrotasks();
+
+		expect(plugin.settings.connections[0].clientSecretName).toBe("my-client-secret");
+		expect(plugin.settings.connections[0].targetSecretName).toBe("my-target");
+	});
+
+	it("only reschedules the refresh timers for valid positive numbers", async () => {
+		const { tab, plugin } = render();
+		const input = cell(rows(tab)[0], COL.interval).querySelector("input") as HTMLInputElement;
+
+		setInputValue(input, "abc");
+		setInputValue(input, "-5");
+		await flushMicrotasks();
+		expect(plugin.rescheduleTokenRefresh).not.toHaveBeenCalled();
+
+		setInputValue(input, "15");
+		await flushMicrotasks();
+		expect(plugin.settings.connections[0].refreshIntervalMinutes).toBe(15);
+		expect(plugin.rescheduleTokenRefresh).toHaveBeenCalledTimes(1);
 	});
 
 	it("saves the chosen plugin to reload and the confirmation toggle", async () => {
 		const { tab, plugin } = render();
-		const rows = tab.containerEl.querySelectorAll(".setting-item");
-		const select = rows[5].querySelector("select") as HTMLSelectElement;
-		const toggle = rows[6].querySelector("input") as HTMLInputElement;
+		const row = rows(tab)[0];
+		const select = cell(row, COL.plugin).querySelector("select") as HTMLSelectElement;
+		const toggle = cell(row, COL.confirm).querySelector("input") as HTMLInputElement;
 
 		expect(Array.from(select.options).map((o) => o.value)).toEqual(["", "demo"]);
 
 		select.value = "demo";
-		select.dispatchEvent(new Event("change"));
+		fire(select, "change");
 		toggle.checked = false;
-		toggle.dispatchEvent(new Event("change"));
+		fire(toggle, "change");
 		await flushMicrotasks();
 
-		expect(plugin.settings.reloadPluginId).toBe("demo");
-		expect(plugin.settings.confirmBeforeReload).toBe(false);
+		expect(plugin.settings.connections[0].reloadPluginId).toBe("demo");
+		expect(plugin.settings.connections[0].confirmBeforeReload).toBe(false);
 	});
 
-	it("updates tokenUrl and saves settings when the user types a new Token URL", async () => {
-		const { tab, plugin } = render();
-		const rows = tab.containerEl.querySelectorAll(".setting-item");
-		const tokenUrlInput = rows[0].querySelector("input") as HTMLInputElement;
+	it("adds a new connection row and reschedules when Add connection is clicked", async () => {
+		const { tab, plugin } = render([]);
+		expect(rows(tab)).toHaveLength(0);
 
-		setInputValue(tokenUrlInput, "https://internal.example.com/oauth/token");
+		button(tab.containerEl, "Add connection").click();
 		await flushMicrotasks();
 
-		expect(plugin.settings.tokenUrl).toBe("https://internal.example.com/oauth/token");
-		expect(plugin.saveSettings).toHaveBeenCalledTimes(1);
+		expect(plugin.settings.connections).toHaveLength(1);
+		expect(plugin.saveSettings).toHaveBeenCalled();
+		expect(plugin.rescheduleTokenRefresh).toHaveBeenCalled();
+		expect(rows(tab)).toHaveLength(1);
 	});
 
-	it("updates the client secret name when a secret is selected", async () => {
-		const { tab, plugin } = render();
-		const rows = tab.containerEl.querySelectorAll(".setting-item");
-		const clientSecretInput = rows[2].querySelector("input.secret-component") as HTMLInputElement;
+	it("deletes only the clicked connection", async () => {
+		const [a, b] = [newConnection(), newConnection()];
+		const { tab, plugin } = render([a, b]);
 
-		setSecretValue(clientSecretInput, "my-client-secret");
+		button(rows(tab)[0], "Delete").click();
 		await flushMicrotasks();
 
-		expect(plugin.settings.clientSecretName).toBe("my-client-secret");
-		expect(plugin.saveSettings).toHaveBeenCalledTimes(1);
+		expect(plugin.settings.connections).toEqual([b]);
+		expect(plugin.rescheduleTokenRefresh).toHaveBeenCalled();
+		expect(rows(tab)).toHaveLength(1);
 	});
 
-	it("only reschedules the refresh timer for valid positive numbers", async () => {
-		const { tab, plugin } = render();
-		const rows = tab.containerEl.querySelectorAll(".setting-item");
-		const intervalInput = rows[4].querySelector("input") as HTMLInputElement;
+	it("fetches the clicked connection, or all connections", () => {
+		const [a, b] = [newConnection(), newConnection()];
+		const { tab, plugin } = render([a, b]);
 
-		setInputValue(intervalInput, "not-a-number");
-		await flushMicrotasks();
-		expect(plugin.rescheduleTokenRefresh).not.toHaveBeenCalled();
+		button(rows(tab)[1], "Fetch").click();
+		expect(plugin.fetchTokenNow).toHaveBeenCalledWith(b.id);
 
-		setInputValue(intervalInput, "30");
-		await flushMicrotasks();
-		expect(plugin.settings.refreshIntervalMinutes).toBe(30);
-		expect(plugin.rescheduleTokenRefresh).toHaveBeenCalledTimes(1);
-	});
-
-	it("triggers an immediate fetch when the Fetch now button is clicked", () => {
-		const { tab, plugin } = render();
-		const rows = tab.containerEl.querySelectorAll(".setting-item");
-		const fetchButton = rows[7].querySelector("button") as HTMLButtonElement;
-
-		fetchButton.click();
-
-		expect(plugin.fetchTokenNow).toHaveBeenCalledTimes(1);
+		button(tab.containerEl, "Fetch all now").click();
+		expect(plugin.fetchAllNow).toHaveBeenCalledTimes(1);
 	});
 });

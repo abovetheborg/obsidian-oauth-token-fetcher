@@ -1,17 +1,24 @@
 import { Notice, Plugin } from "obsidian";
-import { ObsidianHttpClient } from "./ObsidianHttpClient";
 import { ModalConfirmer, ObsidianPluginReloader } from "./ObsidianPluginReloader";
+import { ObsidianHttpClient } from "./ObsidianHttpClient";
 import { ObsidianSecretStore } from "./ObsidianSecretStore";
 import { InstalledPlugin, reloadAfterRefresh } from "./PluginReloader";
 import { Scheduler, WindowScheduler } from "./Scheduler";
-import { DEFAULT_SETTINGS, OAuthTokenFetcherSettings } from "./settings";
+import { displayName, isConfigured, migrateSettings, OAuthTokenFetcherSettings } from "./settings";
 import { OAuthTokenFetcherSettingTab } from "./SettingsTab";
 import { consoleLogger, TokenFetcher } from "./TokenFetcher";
 
+interface FetchOptions {
+	/** Reload the connection's configured plugin after a successful refresh */
+	reloadPlugin?: boolean;
+	/** Show a notice when the connection is incomplete (off for background fetches) */
+	notifyIfUnconfigured?: boolean;
+}
+
 export default class OAuthTokenFetcherPlugin extends Plugin {
-	settings: OAuthTokenFetcherSettings = DEFAULT_SETTINGS;
+	settings: OAuthTokenFetcherSettings = { connections: [] };
 	private scheduler: Scheduler = new WindowScheduler();
-	private cancelRefresh: (() => void) | null = null;
+	private cancelRefreshes: Array<() => void> = [];
 
 	async onload() {
 		await this.loadSettings();
@@ -19,49 +26,71 @@ export default class OAuthTokenFetcherPlugin extends Plugin {
 
 		this.addCommand({
 			id: "fetch-oauth-token-now",
-			name: "Fetch OAuth token now",
-			callback: () => this.fetchTokenNow(),
+			name: "Fetch all OAuth tokens now",
+			callback: () => this.fetchAllNow(),
 		});
 
 		this.rescheduleTokenRefresh();
-		// Kick off an initial fetch so the token is fresh right after load.
-		void this.fetchTokenNow({ reloadPlugin: false });
+		// Initial fetch so tokens are fresh right after load; no reload prompt at startup.
+		for (const c of this.settings.connections) {
+			void this.fetchTokenNow(c.id, { reloadPlugin: false, notifyIfUnconfigured: false });
+		}
 	}
 
 	onunload() {
-		this.cancelRefresh?.();
+		this.cancelAllRefreshes();
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		this.settings = migrateSettings(await this.loadData());
 	}
 
 	async saveSettings() {
 		await this.saveData(this.settings);
 	}
 
+	/** Rebuilds one timer per connection; call after connections or intervals change. */
 	rescheduleTokenRefresh(): void {
-		this.cancelRefresh?.();
-		const intervalMs = this.settings.refreshIntervalMinutes * 60 * 1000;
-		this.cancelRefresh = this.scheduler.scheduleRepeating(() => void this.fetchTokenNow(), intervalMs);
+		this.cancelAllRefreshes();
+		for (const c of this.settings.connections) {
+			const intervalMs = c.refreshIntervalMinutes * 60 * 1000;
+			this.cancelRefreshes.push(
+				this.scheduler.scheduleRepeating(
+					() => void this.fetchTokenNow(c.id, { notifyIfUnconfigured: false }),
+					intervalMs,
+				),
+			);
+		}
 	}
 
 	listReloadablePlugins(): InstalledPlugin[] {
 		return new ObsidianPluginReloader(this.app, this.manifest.id).listPlugins();
 	}
 
-	async fetchTokenNow({ reloadPlugin = true } = {}): Promise<void> {
-		if (!this.settings.tokenUrl || !this.settings.clientId || !this.settings.clientSecretName || !this.settings.targetSecretName) {
-			new Notice("OAuth Token Fetcher: configure the plugin settings before fetching a token.");
+	async fetchAllNow(): Promise<void> {
+		for (const c of [...this.settings.connections]) {
+			await this.fetchTokenNow(c.id);
+		}
+	}
+
+	async fetchTokenNow(connectionId: string, { reloadPlugin = true, notifyIfUnconfigured = true }: FetchOptions = {}): Promise<void> {
+		const connection = this.settings.connections.find((c) => c.id === connectionId);
+		if (!connection) return;
+		const label = displayName(connection);
+
+		if (!isConfigured(connection)) {
+			if (notifyIfUnconfigured) {
+				new Notice(`OAuth Token Fetcher: configure "${label}" before fetching a token.`);
+			}
 			return;
 		}
 
 		const fetcher = new TokenFetcher(
 			{
-				tokenUrl: this.settings.tokenUrl,
-				clientId: this.settings.clientId,
-				clientSecretName: this.settings.clientSecretName,
-				targetSecretName: this.settings.targetSecretName,
+				tokenUrl: connection.tokenUrl,
+				clientId: connection.clientId,
+				clientSecretName: connection.clientSecretName,
+				targetSecretName: connection.targetSecretName,
 			},
 			new ObsidianHttpClient(),
 			new ObsidianSecretStore(this.app),
@@ -70,18 +99,23 @@ export default class OAuthTokenFetcherPlugin extends Plugin {
 		try {
 			await fetcher.fetchAndStoreToken();
 		} catch (error) {
-			console.error("[oauth-token-fetcher] Failed to refresh token", error);
-			new Notice(`OAuth Token Fetcher: failed to refresh token (${(error as Error).message})`);
+			console.error(`[oauth-token-fetcher] Failed to refresh token for "${label}"`, error);
+			new Notice(`OAuth Token Fetcher: failed to refresh "${label}" (${(error as Error).message})`);
 			return;
 		}
 
 		if (reloadPlugin) {
 			await reloadAfterRefresh(
-				this.settings,
+				connection,
 				new ObsidianPluginReloader(this.app, this.manifest.id),
 				new ModalConfirmer(this.app),
 				consoleLogger,
 			);
 		}
+	}
+
+	private cancelAllRefreshes() {
+		this.cancelRefreshes.forEach((cancel) => cancel());
+		this.cancelRefreshes = [];
 	}
 }

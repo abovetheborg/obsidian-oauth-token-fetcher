@@ -65,6 +65,9 @@ export class ButtonComponent {
 		this.clickCb = cb;
 		return this;
 	}
+	setWarning() {
+		return this;
+	}
 }
 
 export class DropdownComponent {
