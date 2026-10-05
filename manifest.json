@@ -1,7 +1,7 @@
 {
   "id": "oauth-token-fetcher",
   "name": "OAuth Token Fetcher",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "minAppVersion": "1.13.0",
   "description": "Periodically fetches OAuth2 client-credentials tokens and stores them in SecretStorage for other plugins.",
   "author": "abovetheborg",
