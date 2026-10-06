@@ -19,7 +19,7 @@ export class OAuthTokenFetcherSettingTab extends PluginSettingTab {
 			},
 			{
 				name: "Debug mode",
-				desc: "Record full request and response details, including secrets, for troubleshooting. Kept in memory until Obsidian quits.",
+				desc: "Record full request and response details, including secrets, for troubleshooting. Turns off again after a restart.",
 				control: { type: "toggle", key: "debugMode" },
 			},
 			{

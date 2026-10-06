@@ -6,9 +6,10 @@ describe("migrateSettings", () => {
 		expect(migrateSettings({}).connections).toEqual([]);
 	});
 
-	it("defaults debugMode to off and preserves it when set", () => {
+	it("always starts with debugMode off, even if it was saved as on", () => {
 		expect(migrateSettings({}).debugMode).toBe(false);
-		expect(migrateSettings({ connections: [], debugMode: true }).debugMode).toBe(true);
+		expect(migrateSettings({ connections: [], debugMode: true }).debugMode).toBe(false);
+		expect(migrateSettings({ tokenUrl: "u", debugMode: true }).debugMode).toBe(false);
 	});
 
 	it("converts the legacy flat settings into one connection", () => {

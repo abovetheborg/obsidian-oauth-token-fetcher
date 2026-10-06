@@ -17,7 +17,7 @@ export interface Connection {
 
 export interface OAuthTokenFetcherSettings {
 	connections: Connection[];
-	/** Record full request/response details (including secrets) in an in-memory debug log */
+	/** Record full request/response details (including secrets); always off after a restart */
 	debugMode: boolean;
 }
 
@@ -48,7 +48,8 @@ export function displayName(c: Connection): string {
 /** Fills defaults and converts the pre-connections flat settings format into one connection. */
 export function migrateSettings(data: unknown): OAuthTokenFetcherSettings {
 	const raw = (data ?? {}) as Record<string, unknown>;
-	const debugMode = raw.debugMode === true;
+	// A saved debugMode is ignored on purpose: it resets to off on every restart.
+	const debugMode = false;
 
 	if (Array.isArray(raw.connections)) {
 		return {

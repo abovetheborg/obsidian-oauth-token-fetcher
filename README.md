@@ -29,7 +29,8 @@ migrated automatically into one connection named "Default".
 
 ## Debug mode
 
-Turn on **Debug mode** in the plugin settings, trigger a fetch, then use
+Turn on **Debug mode** in the plugin settings (it is off again after every
+restart), trigger a fetch, then use
 **View debug log** (or the `Show OAuth debug log` command) and click **Copy**.
 For each token request it records the URL, form fields, and the server's status,
 response headers and body, which usually explains errors such as HTTP 401
