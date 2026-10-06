@@ -7,9 +7,10 @@ other plugins can read them by secret name.
 
 ## Settings
 
-Connections are managed in a table: one row per OAuth connection, with
-"Add connection", per-row "Fetch"/"Delete" and "Fetch all now" buttons. Each
-row has:
+Connections are listed in a table with one row per OAuth connection (name,
+token URL, target secret, refresh interval, plugin to reload). Use **Add
+connection** to open a form, and the row icons to fetch now, edit, or delete.
+**Fetch all now** refreshes every connection. The form has:
 
 - **Name** — display label only.
 - **Token URL** — the OAuth2 token endpoint (client_credentials grant).
@@ -17,10 +18,10 @@ row has:
 - **Client secret** — name of the SecretStorage entry holding the `client_secret`.
 - **Target secret** — name of the SecretStorage entry the fetched access token
   is written to. Other plugins read this via `app.secretStorage.getSecret(name)`.
-- **Refresh (min)** — how often the token is refreshed (default 60).
+- **Refresh interval** — minutes between refreshes (default 60).
 - **Plugin to reload** — optional other enabled plugin that is reloaded after a
   successful refresh, so it picks up the new token.
-- **Confirm reload** — ask for confirmation before that reload (default on).
+- **Confirm before reloading** — ask for confirmation before that reload (default on).
 
 The command palette entry `Fetch all OAuth tokens now` refreshes every
 connection. Settings saved by older versions (a single flat connection) are
@@ -105,13 +106,13 @@ npm test
    (override with `PORT`, `CLIENT_ID`, `CLIENT_SECRET`).
 3. In Obsidian, open `test-vault/` as a vault and enable both community plugins
    (turn off Restricted Mode if prompted).
-4. In **OAuth Token Fetcher** settings, click "Add connection" and fill in the row:
+4. In **OAuth Token Fetcher** settings, click "Add connection" and fill in the form:
    - Token URL: `http://localhost:8080/token`
    - Client ID: `test-client`
    - Client secret: a SecretStorage entry whose value is `test-secret`
    - Target secret: `tt-secret`
 5. In **secret-target-demo** settings, set "Secret to display" to `tt-secret`.
-6. Click the row's "Fetch" button (or run `Fetch all OAuth tokens now`).
+6. Click the row's refresh icon (or run `Fetch all OAuth tokens now`).
    To test the reload, set "Plugin to reload" to Secret Target Demo first; its
    status bar `loads: N` counter increases after a confirmed reload. The mock server logs each
    request, and the demo plugin's status bar shows the new `mock-token-N-...` value

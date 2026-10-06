@@ -13,6 +13,12 @@ if (!(HTMLElement.prototype as any).empty) {
 
 export class App {}
 
+if (!(HTMLElement.prototype as any).addClass) {
+	(HTMLElement.prototype as any).addClass = function (this: HTMLElement, ...classes: string[]) {
+		this.classList.add(...classes);
+	};
+}
+
 if (!(HTMLElement.prototype as any).createEl) {
 	(HTMLElement.prototype as any).createEl = function (
 		this: HTMLElement,
@@ -96,6 +102,52 @@ export class ButtonComponent {
 	setDestructive() {
 		return this;
 	}
+	setCta() {
+		return this;
+	}
+}
+
+export class ExtraButtonComponent {
+	extraSettingsEl: HTMLElement;
+	private clickCb: (() => void) | null = null;
+
+	constructor(containerEl: HTMLElement) {
+		this.extraSettingsEl = document.createElement("div");
+		containerEl.appendChild(this.extraSettingsEl);
+		this.extraSettingsEl.addEventListener("click", () => this.clickCb?.());
+	}
+
+	setIcon(icon: string) {
+		this.extraSettingsEl.dataset.icon = icon;
+		return this;
+	}
+	/** Real Obsidian uses aria-label; `title` is easier to query in tests. */
+	setTooltip(tooltip: string) {
+		this.extraSettingsEl.title = tooltip;
+		return this;
+	}
+	onClick(cb: () => void) {
+		this.clickCb = cb;
+		return this;
+	}
+}
+
+export class Modal {
+	contentEl: HTMLElement = document.createElement("div");
+	title = "";
+	constructor(public app: App) {}
+	setTitle(title: string) {
+		this.title = title;
+		return this;
+	}
+	open() {
+		this.onOpen();
+	}
+	close() {
+		this.onClose();
+	}
+	onOpen() {}
+	onClose() {}
 }
 
 export class DropdownComponent {
@@ -229,7 +281,10 @@ export class Plugin {
 }
 
 export class Notice {
-	constructor(public message: string) {}
+	static messages: string[] = [];
+	constructor(public message: string) {
+		Notice.messages.push(message);
+	}
 }
 
 export function requestUrl(): never {

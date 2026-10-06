@@ -1,0 +1,54 @@
+/* Connections table in the plugin settings. */
+.oauth-fetcher-connections {
+	flex-wrap: wrap;
+}
+
+.oauth-fetcher-table-wrap {
+	flex-basis: 100%;
+	margin-top: var(--size-4-3);
+	overflow-x: auto;
+}
+
+.oauth-fetcher-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: calc(var(--font-ui-smaller) - 1px);
+}
+
+.oauth-fetcher-table th {
+	padding: var(--size-4-1) var(--size-4-2);
+	border-bottom: 1px solid var(--background-modifier-border);
+	color: var(--text-muted);
+	font-weight: var(--font-semibold);
+	text-align: left;
+	white-space: nowrap;
+}
+
+.oauth-fetcher-table td {
+	padding: var(--size-4-2);
+	border-bottom: 1px solid var(--background-modifier-border);
+	vertical-align: middle;
+}
+
+.oauth-fetcher-table .oauth-fetcher-url {
+	max-width: 16em;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.oauth-fetcher-table .oauth-fetcher-muted {
+	color: var(--text-faint);
+}
+
+.oauth-fetcher-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--size-4-1);
+}
+
+.oauth-fetcher-empty {
+	padding: var(--size-4-4);
+	color: var(--text-muted);
+	text-align: center;
+}

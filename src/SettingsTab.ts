@@ -1,28 +1,9 @@
-import {
-	App,
-	ButtonComponent,
-	DropdownComponent,
-	PluginSettingTab,
-	SecretComponent,
-	Setting,
-	SettingDefinitionItem,
-	TextComponent,
-	ToggleComponent,
-} from "obsidian";
+import { App, ExtraButtonComponent, PluginSettingTab, Setting, SettingDefinitionItem } from "obsidian";
+import { ConnectionModal } from "./ConnectionModal";
 import type OAuthTokenFetcherPlugin from "./main";
 import { Connection, newConnection } from "./settings";
 
-const COLUMNS = [
-	"Name",
-	"Token URL",
-	"Client ID",
-	"Client secret",
-	"Target secret",
-	"Refresh (min)",
-	"Plugin to reload",
-	"Confirm reload",
-	"",
-];
+const COLUMNS = ["Name", "Token URL", "Target secret", "Refresh", "Reload plugin", ""];
 
 export class OAuthTokenFetcherSettingTab extends PluginSettingTab {
 	constructor(app: App, private readonly plugin: OAuthTokenFetcherPlugin) {
@@ -33,7 +14,7 @@ export class OAuthTokenFetcherSettingTab extends PluginSettingTab {
 		return [
 			{
 				name: "Connections",
-				desc: "Manage OAuth token requests and optional plugin reloads.",
+				desc: "OAuth token requests, each optionally reloading a plugin afterwards.",
 				render: (setting) => this.renderConnections(setting),
 			},
 			{
@@ -50,90 +31,78 @@ export class OAuthTokenFetcherSettingTab extends PluginSettingTab {
 	}
 
 	private renderConnections(setting: Setting): void {
-			new Setting(setting.controlEl)
-				.setName("Connections")
-				.addButton((button) =>
-					button.setButtonText("Add connection").onClick(async () => {
-						this.plugin.settings.connections.push(newConnection());
-						await this.plugin.saveSettings();
-						this.plugin.rescheduleTokenRefresh();
-						this.update();
-					}),
-				)
-				.addButton((button) =>
-					button.setButtonText("Fetch all now").onClick(async () => {
-						await this.plugin.fetchAllNow();
-					}),
-				);
+		setting.settingEl.addClass("oauth-fetcher-connections");
+		setting
+			.addButton((button) =>
+				button
+					.setButtonText("Add connection")
+					.setCta()
+					.onClick(() => this.openModal("Add connection", newConnection())),
+			)
+			.addButton((button) =>
+				button.setButtonText("Fetch all now").onClick(async () => {
+					await this.plugin.fetchAllNow();
+				}),
+			);
 
-			const wrapper = setting.controlEl.createDiv();
-			wrapper.setCssStyles({ overflowX: "auto" });
-			const table = wrapper.createEl("table");
-			const headRow = table.createEl("thead").createEl("tr");
-			for (const title of COLUMNS) headRow.createEl("th", { text: title });
-
-			const tbody = table.createEl("tbody");
-			for (const connection of this.plugin.settings.connections) this.renderRow(tbody, connection);
-	}
-
-	private renderRow(tbody: HTMLElement, connection: Connection): void {
-			const row = tbody.createEl("tr");
-			const cell = () => row.createEl("td");
-		const save = () => this.plugin.saveSettings();
-
-		const textCell = (key: "name" | "tokenUrl" | "clientId", placeholder = "") =>
-			new TextComponent(cell())
-				.setPlaceholder(placeholder)
-				.setValue(connection[key])
-				.onChange(async (value) => {
-					connection[key] = value.trim();
-					await save();
-				});
-
-		textCell("name", "My API");
-		textCell("tokenUrl", "https://example.com/oauth/token");
-		textCell("clientId");
-
-		for (const key of ["clientSecretName", "targetSecretName"] as const) {
-			new SecretComponent(this.app, cell()).setValue(connection[key]).onChange(async (value) => {
-				connection[key] = value;
-				await save();
-			});
+		const wrap = setting.settingEl.createDiv({ cls: "oauth-fetcher-table-wrap" });
+		const { connections } = this.plugin.settings;
+		if (connections.length === 0) {
+			wrap.createDiv({ cls: "oauth-fetcher-empty", text: "No connections yet. Add one to get started." });
+			return;
 		}
 
-		new TextComponent(cell())
-			.setValue(String(connection.refreshIntervalMinutes))
-			.onChange(async (value) => {
-				const minutes = Number(value);
-				if (Number.isFinite(minutes) && minutes > 0) {
-					connection.refreshIntervalMinutes = minutes;
-					await save();
-					this.plugin.rescheduleTokenRefresh();
-				}
+		const table = wrap.createEl("table", { cls: "oauth-fetcher-table" });
+		const headRow = table.createEl("thead").createEl("tr");
+		for (const title of COLUMNS) headRow.createEl("th", { text: title });
+
+		const tbody = table.createEl("tbody");
+		const plugins = this.plugin.listReloadablePlugins();
+		for (const connection of connections) this.renderRow(tbody, connection, plugins);
+	}
+
+	private renderRow(tbody: HTMLElement, connection: Connection, plugins: Array<{ id: string; name: string }>): void {
+		const row = tbody.createEl("tr");
+		const reloadName = plugins.find((p) => p.id === connection.reloadPluginId)?.name ?? connection.reloadPluginId;
+
+		row.createEl("td", { text: connection.name || "Unnamed" });
+		row.createEl("td", { text: connection.tokenUrl || "Not set", cls: "oauth-fetcher-url" });
+		row.createEl("td", { text: connection.targetSecretName || "Not set" });
+		row.createEl("td", { text: `${connection.refreshIntervalMinutes} min` });
+		row.createEl("td", reloadName ? { text: reloadName } : { text: "None", cls: "oauth-fetcher-muted" });
+
+		const actions = row.createEl("td").createDiv({ cls: "oauth-fetcher-actions" });
+		new ExtraButtonComponent(actions)
+			.setIcon("refresh-cw")
+			.setTooltip("Fetch now")
+			.onClick(async () => {
+				await this.plugin.fetchTokenNow(connection.id);
 			});
+		new ExtraButtonComponent(actions)
+			.setIcon("pencil")
+			.setTooltip("Edit")
+			.onClick(() => this.openModal("Edit connection", { ...connection }));
+		new ExtraButtonComponent(actions)
+			.setIcon("trash-2")
+			.setTooltip("Delete")
+			.onClick(async () => {
+				const { connections } = this.plugin.settings;
+				connections.splice(connections.indexOf(connection), 1);
+				await this.plugin.saveSettings();
+				this.plugin.rescheduleTokenRefresh();
+				this.update();
+			});
+	}
 
-		const dropdown = new DropdownComponent(cell()).addOption("", "None");
-		for (const p of this.plugin.listReloadablePlugins()) dropdown.addOption(p.id, p.name);
-		dropdown.setValue(connection.reloadPluginId).onChange(async (value) => {
-			connection.reloadPluginId = value;
-			await save();
-		});
-
-		new ToggleComponent(cell()).setValue(connection.confirmBeforeReload).onChange(async (value) => {
-			connection.confirmBeforeReload = value;
-			await save();
-		});
-
-		const actions = cell();
-		new ButtonComponent(actions).setButtonText("Fetch").onClick(async () => {
-			await this.plugin.fetchTokenNow(connection.id);
-		});
-		new ButtonComponent(actions).setButtonText("Delete").setDestructive().onClick(async () => {
+	private openModal(heading: string, connection: Connection): void {
+		new ConnectionModal(this.app, connection, this.plugin.listReloadablePlugins(), heading, async (updated) => {
 			const { connections } = this.plugin.settings;
-			connections.splice(connections.indexOf(connection), 1);
-			await save();
+			const index = connections.findIndex((c) => c.id === updated.id);
+			if (index >= 0) connections[index] = updated;
+			else connections.push(updated);
+			await this.plugin.saveSettings();
 			this.plugin.rescheduleTokenRefresh();
 			this.update();
-		});
+		}).open();
 	}
 }
