@@ -36,6 +36,16 @@ export class OAuthTokenFetcherSettingTab extends PluginSettingTab {
 				desc: "Manage OAuth token requests and optional plugin reloads.",
 				render: (setting) => this.renderConnections(setting),
 			},
+			{
+				name: "Debug mode",
+				desc: "Record full request and response details, including secrets, for troubleshooting. Kept in memory until Obsidian quits.",
+				control: { type: "toggle", key: "debugMode" },
+			},
+			{
+				name: "View debug log",
+				desc: "Open the recorded log to read or copy it. It is kept in memory only.",
+				action: () => this.plugin.showDebugLog(),
+			},
 		];
 	}
 

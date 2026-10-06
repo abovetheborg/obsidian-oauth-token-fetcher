@@ -12,7 +12,12 @@ export class ObsidianHttpClient implements HttpClient {
 			throw: false,
 		});
 
-		return { status: response.status, json: safeJson(response.text) };
+		return {
+			status: response.status,
+			json: safeJson(response.text),
+			text: response.text,
+			headers: response.headers,
+		};
 	}
 }
 

@@ -26,6 +26,18 @@ The command palette entry `Fetch all OAuth tokens now` refreshes every
 connection. Settings saved by older versions (a single flat connection) are
 migrated automatically into one connection named "Default".
 
+## Debug mode
+
+Turn on **Debug mode** in the plugin settings, trigger a fetch, then use
+**View debug log** (or the `Show OAuth debug log` command) and click **Copy**.
+For each token request it records the URL, form fields, and the server's status,
+response headers and body, which usually explains errors such as HTTP 401
+(`error_description`, `WWW-Authenticate`). Values are logged as-is, **including the
+client secret and returned tokens**, so treat copied logs as sensitive. Failed
+fetches are always recorded (with or without debug mode); the request/response
+detail needs debug mode on. The log is kept in memory only (last 200 entries)
+and is cleared when Obsidian quits or the plugin is disabled.
+
 ## Network use and privacy
 
 The plugin sends a `client_credentials` request (client ID and client secret)

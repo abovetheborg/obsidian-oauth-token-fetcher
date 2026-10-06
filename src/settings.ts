@@ -17,9 +17,11 @@ export interface Connection {
 
 export interface OAuthTokenFetcherSettings {
 	connections: Connection[];
+	/** Record full request/response details (including secrets) in an in-memory debug log */
+	debugMode: boolean;
 }
 
-export const DEFAULT_SETTINGS: OAuthTokenFetcherSettings = { connections: [] };
+export const DEFAULT_SETTINGS: OAuthTokenFetcherSettings = { connections: [], debugMode: false };
 
 export function newConnection(): Connection {
 	return {
@@ -46,20 +48,22 @@ export function displayName(c: Connection): string {
 /** Fills defaults and converts the pre-connections flat settings format into one connection. */
 export function migrateSettings(data: unknown): OAuthTokenFetcherSettings {
 	const raw = (data ?? {}) as Record<string, unknown>;
+	const debugMode = raw.debugMode === true;
 
 	if (Array.isArray(raw.connections)) {
 		return {
 			connections: raw.connections.map((c) => ({ ...newConnection(), ...(c as Partial<Connection>) })),
+			debugMode,
 		};
 	}
 
 	const legacy = ["tokenUrl", "clientId", "clientSecretName", "targetSecretName"] as const;
-	if (!legacy.some((key) => raw[key])) return { connections: [] };
+	if (!legacy.some((key) => raw[key])) return { connections: [], debugMode };
 
 	const connection: Connection = { ...newConnection(), name: "Default" };
 	for (const key of legacy) connection[key] = (raw[key] as string | null) ?? "";
 	if (typeof raw.refreshIntervalMinutes === "number") connection.refreshIntervalMinutes = raw.refreshIntervalMinutes;
 	if (typeof raw.reloadPluginId === "string") connection.reloadPluginId = raw.reloadPluginId;
 	if (typeof raw.confirmBeforeReload === "boolean") connection.confirmBeforeReload = raw.confirmBeforeReload;
-	return { connections: [connection] };
+	return { connections: [connection], debugMode };
 }

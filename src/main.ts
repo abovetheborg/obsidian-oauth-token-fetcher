@@ -1,4 +1,8 @@
 import { Notice, Plugin } from "obsidian";
+import { DebugLog } from "./DebugLog";
+import { DebugLogModal } from "./DebugLogModal";
+import { HttpClient } from "./HttpClient";
+import { LoggingHttpClient } from "./LoggingHttpClient";
 import { ModalConfirmer, ObsidianPluginReloader } from "./ObsidianPluginReloader";
 import { ObsidianHttpClient } from "./ObsidianHttpClient";
 import { ObsidianSecretStore } from "./ObsidianSecretStore";
@@ -16,7 +20,8 @@ interface FetchOptions {
 }
 
 export default class OAuthTokenFetcherPlugin extends Plugin {
-	settings: OAuthTokenFetcherSettings = { connections: [] };
+	settings: OAuthTokenFetcherSettings = { connections: [], debugMode: false };
+	private debugLog = new DebugLog();
 	private scheduler: Scheduler = new WindowScheduler();
 	private cancelRefreshes: Array<() => void> = [];
 
@@ -29,6 +34,11 @@ export default class OAuthTokenFetcherPlugin extends Plugin {
 			name: "Fetch all OAuth tokens now",
 			callback: () => this.fetchAllNow(),
 		});
+		this.addCommand({
+			id: "show-debug-log",
+			name: "Show OAuth debug log",
+			callback: () => this.showDebugLog(),
+		});
 
 		this.rescheduleTokenRefresh();
 		// Initial fetch so tokens are fresh right after load; no reload prompt at startup.
@@ -39,6 +49,7 @@ export default class OAuthTokenFetcherPlugin extends Plugin {
 
 	onunload() {
 		this.cancelAllRefreshes();
+		this.debugLog.clear();
 	}
 
 	async loadSettings() {
@@ -67,6 +78,15 @@ export default class OAuthTokenFetcherPlugin extends Plugin {
 		return new ObsidianPluginReloader(this.app, this.manifest.id).listPlugins();
 	}
 
+	showDebugLog(): void {
+		new DebugLogModal(this.app, this.debugLog).open();
+	}
+
+	private createHttpClient(): HttpClient {
+		const client = new ObsidianHttpClient();
+		return this.settings.debugMode ? new LoggingHttpClient(client, this.debugLog) : client;
+	}
+
 	async fetchAllNow(): Promise<void> {
 		for (const c of [...this.settings.connections]) {
 			await this.fetchTokenNow(c.id);
@@ -85,6 +105,8 @@ export default class OAuthTokenFetcherPlugin extends Plugin {
 			return;
 		}
 
+		if (this.settings.debugMode) this.debugLog.add(`FETCH "${label}"`);
+
 		const fetcher = new TokenFetcher(
 			{
 				tokenUrl: connection.tokenUrl,
@@ -92,13 +114,14 @@ export default class OAuthTokenFetcherPlugin extends Plugin {
 				clientSecretName: connection.clientSecretName,
 				targetSecretName: connection.targetSecretName,
 			},
-			new ObsidianHttpClient(),
+			this.createHttpClient(),
 			new ObsidianSecretStore(this.app),
 		);
 
 		try {
 			await fetcher.fetchAndStoreToken();
 		} catch (error) {
+			this.debugLog.add(`FAILED "${label}": ${(error as Error).message}`);
 			console.error(`[oauth-token-fetcher] Failed to refresh token for "${label}"`, error);
 			new Notice(`OAuth Token Fetcher: failed to refresh "${label}" (${(error as Error).message})`);
 			return;

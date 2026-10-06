@@ -6,6 +6,11 @@ describe("migrateSettings", () => {
 		expect(migrateSettings({}).connections).toEqual([]);
 	});
 
+	it("defaults debugMode to off and preserves it when set", () => {
+		expect(migrateSettings({}).debugMode).toBe(false);
+		expect(migrateSettings({ connections: [], debugMode: true }).debugMode).toBe(true);
+	});
+
 	it("converts the legacy flat settings into one connection", () => {
 		const { connections } = migrateSettings({
 			tokenUrl: "https://example.com/token",

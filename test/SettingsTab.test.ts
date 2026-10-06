@@ -10,7 +10,8 @@ import type OAuthTokenFetcherPlugin from "../src/main";
 function makeFakePlugin(connections: Connection[]) {
 	return {
 		app: {},
-		settings: { connections },
+		settings: { connections, debugMode: false },
+		showDebugLog: jest.fn(),
 		saveSettings: jest.fn().mockResolvedValue(undefined),
 		rescheduleTokenRefresh: jest.fn(),
 		fetchTokenNow: jest.fn().mockResolvedValue(undefined),
@@ -54,6 +55,21 @@ describe("OAuthTokenFetcherSettingTab", () => {
 	const cell = (row: Element, index: number) => row.children[index] as HTMLElement;
 	const button = (root: Element, text: string) =>
 		Array.from(root.querySelectorAll("button")).find((b) => b.textContent === text) as HTMLButtonElement;
+
+	it("exposes a debug mode toggle and a debug log action", () => {
+		const { tab, plugin } = render();
+		const definitions = tab.getSettingDefinitions() as unknown as Array<{
+			name: string;
+			control?: { key: string };
+			action?: () => void;
+		}>;
+
+		expect(definitions.map((d) => d.name)).toEqual(["Connections", "Debug mode", "View debug log"]);
+		expect(definitions[1].control?.key).toBe("debugMode");
+
+		definitions[2].action?.();
+		expect(plugin.showDebugLog).toHaveBeenCalledTimes(1);
+	});
 
 	it("renders a table header and one row per connection", () => {
 		const { tab } = render([newConnection(), newConnection()]);

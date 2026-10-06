@@ -9,4 +9,7 @@ export interface HttpClient {
 export interface HttpResponse {
 	status: number;
 	json: unknown;
+	/** Raw body and headers, used only for debug logging */
+	text?: string;
+	headers?: Record<string, string>;
 }
