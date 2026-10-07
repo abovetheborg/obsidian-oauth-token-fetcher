@@ -30,7 +30,13 @@ export class OAuthTokenFetcherSettingTab extends PluginSettingTab {
 		];
 	}
 
-	private renderConnections(setting: Setting): void {
+	private renderConnections(setting: Setting): () => void {
+		// On update() Obsidian may re-run render() on the same row, so drop the previous output first.
+		setting.controlEl.empty();
+		for (const child of Array.from(setting.settingEl.children)) {
+			if (child.hasClass("oauth-fetcher-table-wrap")) child.remove();
+		}
+
 		setting.settingEl.addClass("oauth-fetcher-connections");
 		setting
 			.addButton((button) =>
@@ -46,10 +52,11 @@ export class OAuthTokenFetcherSettingTab extends PluginSettingTab {
 			);
 
 		const wrap = setting.settingEl.createDiv({ cls: "oauth-fetcher-table-wrap" });
+		const cleanup = () => wrap.remove();
 		const { connections } = this.plugin.settings;
 		if (connections.length === 0) {
 			wrap.createDiv({ cls: "oauth-fetcher-empty", text: "No connections yet. Add one to get started." });
-			return;
+			return cleanup;
 		}
 
 		const table = wrap.createEl("table", { cls: "oauth-fetcher-table" });
@@ -59,6 +66,7 @@ export class OAuthTokenFetcherSettingTab extends PluginSettingTab {
 		const tbody = table.createEl("tbody");
 		const plugins = this.plugin.listReloadablePlugins();
 		for (const connection of connections) this.renderRow(tbody, connection, plugins);
+		return cleanup;
 	}
 
 	private renderRow(tbody: HTMLElement, connection: Connection, plugins: Array<{ id: string; name: string }>): void {

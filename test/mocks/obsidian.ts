@@ -13,6 +13,11 @@ if (!(HTMLElement.prototype as any).empty) {
 
 export class App {}
 
+if (!(HTMLElement.prototype as any).hasClass) {
+	(HTMLElement.prototype as any).hasClass = function (this: HTMLElement, cls: string) {
+		return this.classList.contains(cls);
+	};
+}
 if (!(HTMLElement.prototype as any).addClass) {
 	(HTMLElement.prototype as any).addClass = function (this: HTMLElement, ...classes: string[]) {
 		this.classList.add(...classes);

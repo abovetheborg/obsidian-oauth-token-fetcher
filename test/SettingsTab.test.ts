@@ -151,6 +151,32 @@ describe("OAuthTokenFetcherSettingTab", () => {
 		expect(plugin.fetchAllNow).toHaveBeenCalledTimes(1);
 	});
 
+	it("does not duplicate rows or buttons when rendered again on the same row", () => {
+		const { plugin } = render([conn({ name: "A" })]);
+		const tab = new OAuthTokenFetcherSettingTab({} as any, plugin as unknown as OAuthTokenFetcherPlugin);
+		const setting = new Setting(tab.containerEl);
+		const definition = tab.getSettingDefinitions()[0] as unknown as { render: (s: Setting) => () => void };
+
+		definition.render(setting);
+		definition.render(setting);
+
+		expect(setting.settingEl.querySelectorAll("tbody tr")).toHaveLength(1);
+		expect(setting.settingEl.querySelectorAll(".oauth-fetcher-table-wrap")).toHaveLength(1);
+		expect(button(setting.settingEl, "Add connection")).toBeDefined();
+		expect(setting.controlEl.querySelectorAll("button")).toHaveLength(2);
+	});
+
+	it("removes its table when the returned cleanup runs", () => {
+		const { plugin } = render([conn()]);
+		const tab = new OAuthTokenFetcherSettingTab({} as any, plugin as unknown as OAuthTokenFetcherPlugin);
+		const setting = new Setting(tab.containerEl);
+		const definition = tab.getSettingDefinitions()[0] as unknown as { render: (s: Setting) => () => void };
+
+		definition.render(setting)();
+
+		expect(setting.settingEl.querySelector(".oauth-fetcher-table-wrap")).toBeNull();
+	});
+
 	it("exposes a debug mode toggle and a debug log action", () => {
 		const { tab, plugin } = render();
 		const definitions = tab.getSettingDefinitions() as unknown as Array<{
