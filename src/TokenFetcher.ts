@@ -4,6 +4,8 @@ import { SecretStore } from "./SecretStore";
 export interface TokenFetcherConfig {
 	/** OAuth2 token endpoint, e.g. https://internal.example.com/oauth/token */
 	tokenUrl: string;
+	/** OAuth2 grant_type; defaults to client_credentials */
+	grantType?: string;
 	/** OAuth2 client_id (not secret, safe to store in plugin settings) */
 	clientId: string;
 	/** Name of the secret in SecretStorage holding the client_secret */
@@ -45,7 +47,7 @@ export class TokenFetcher {
 		}
 
 		const response = await this.http.postForm(this.config.tokenUrl, {
-			grant_type: "client_credentials",
+			grant_type: this.config.grantType || "client_credentials",
 			client_id: this.config.clientId,
 			client_secret: clientSecret,
 			...this.config.extraParams,

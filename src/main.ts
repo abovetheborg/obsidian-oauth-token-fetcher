@@ -8,7 +8,7 @@ import { ObsidianHttpClient } from "./ObsidianHttpClient";
 import { ObsidianSecretStore } from "./ObsidianSecretStore";
 import { InstalledPlugin, reloadAfterRefresh } from "./PluginReloader";
 import { Scheduler, WindowScheduler } from "./Scheduler";
-import { displayName, isConfigured, migrateSettings, OAuthTokenFetcherSettings } from "./settings";
+import { DEFAULT_GRANT_TYPE, displayName, isConfigured, migrateSettings, OAuthTokenFetcherSettings } from "./settings";
 import { OAuthTokenFetcherSettingTab } from "./SettingsTab";
 import { consoleLogger, TokenFetcher } from "./TokenFetcher";
 
@@ -110,9 +110,11 @@ export default class OAuthTokenFetcherPlugin extends Plugin {
 		const fetcher = new TokenFetcher(
 			{
 				tokenUrl: connection.tokenUrl,
+				grantType: connection.grantType || DEFAULT_GRANT_TYPE,
 				clientId: connection.clientId,
 				clientSecretName: connection.clientSecretName,
 				targetSecretName: connection.targetSecretName,
+				extraParams: connection.scope ? { scope: connection.scope } : undefined,
 			},
 			this.createHttpClient(),
 			new ObsidianSecretStore(this.app),

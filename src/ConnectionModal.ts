@@ -1,6 +1,6 @@
 import { App, Modal, Notice, SecretComponent, Setting } from "obsidian";
 import { InstalledPlugin } from "./PluginReloader";
-import { Connection } from "./settings";
+import { Connection, DEFAULT_GRANT_TYPE } from "./settings";
 
 /** Form for adding or editing one connection; works on the copy it is given. */
 export class ConnectionModal extends Modal {
@@ -19,7 +19,7 @@ export class ConnectionModal extends Modal {
 		const c = this.connection;
 		let interval = String(c.refreshIntervalMinutes);
 
-		const text = (name: string, desc: string, key: "name" | "tokenUrl" | "clientId", placeholder = "") =>
+		const text = (name: string, desc: string, key: "name" | "tokenUrl" | "grantType" | "clientId" | "scope", placeholder = "") =>
 			new Setting(this.contentEl)
 				.setName(name)
 				.setDesc(desc)
@@ -44,9 +44,11 @@ export class ConnectionModal extends Modal {
 
 		text("Name", "A label for this connection.", "name", "My API");
 		text("Token URL", "OAuth2 token endpoint (client_credentials grant).", "tokenUrl", "https://example.com/oauth/token");
+		text("Grant type", "OAuth2 grant_type sent with the request.", "grantType", DEFAULT_GRANT_TYPE);
 		text("Client ID", "OAuth2 client_id.", "clientId");
 		secret("Client secret", "Secret holding the OAuth2 client_secret.", "clientSecretName");
 		secret("Target secret", "Secret the access token is written to.", "targetSecretName");
+		text("Scope", "Optional. Space-delimited scopes to request; leave empty to omit.", "scope", "read write");
 
 		new Setting(this.contentEl)
 			.setName("Refresh interval")

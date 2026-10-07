@@ -39,9 +39,11 @@ describe("ConnectionModal", () => {
 		expect(names.filter(Boolean)).toEqual([
 			"Name",
 			"Token URL",
+			"Grant type",
 			"Client ID",
 			"Client secret",
 			"Target secret",
+			"Scope",
 			"Refresh interval",
 			"Plugin to reload",
 			"Confirm before reloading",
@@ -50,13 +52,16 @@ describe("ConnectionModal", () => {
 
 	it("saves the edited values and closes", async () => {
 		const { modal, connection, onSave } = open();
-		const [name, url, clientId, clientSecret, target, interval] = inputs(modal);
+		const [name, url, grantType, clientId, clientSecret, target, scope, interval] = inputs(modal);
+		expect(grantType.value).toBe("client_credentials");
 
 		type(name, " Staging ");
 		type(url, "https://staging.example.com/token");
+		type(grantType, " client_credentials_v2 ");
 		type(clientId, "my-client");
 		type(clientSecret, "client-secret");
 		type(target, "staging-token");
+		type(scope, " read write ");
 		type(interval, "15");
 		const select = el(modal).querySelector("select") as HTMLSelectElement;
 		select.value = "demo";
@@ -72,9 +77,11 @@ describe("ConnectionModal", () => {
 		expect(connection).toMatchObject({
 			name: "Staging",
 			tokenUrl: "https://staging.example.com/token",
+			grantType: "client_credentials_v2",
 			clientId: "my-client",
 			clientSecretName: "client-secret",
 			targetSecretName: "staging-token",
+			scope: "read write",
 			refreshIntervalMinutes: 15,
 			reloadPluginId: "demo",
 			confirmBeforeReload: false,
@@ -84,7 +91,7 @@ describe("ConnectionModal", () => {
 
 	it("rejects an invalid refresh interval and stays open", async () => {
 		const { modal, onSave } = open();
-		const interval = inputs(modal)[5];
+		const interval = inputs(modal)[7];
 
 		for (const bad of ["abc", "0", "-5"]) {
 			type(interval, bad);

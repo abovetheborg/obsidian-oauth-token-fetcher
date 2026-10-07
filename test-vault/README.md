@@ -12,9 +12,10 @@ Run `npm run mock-server`, then in OAuth Token Fetcher settings use:
 - Token URL: `http://localhost:8080/token`
 - Client ID: `test-client`
 - Client secret: pick/create a SecretStorage entry whose value is `test-secret`
+- Scope: optional, e.g. `read` (the server allows `read write`)
 
 Each fetch issues a new `mock-token-N-...` value. Override with the `PORT`,
-`CLIENT_ID` and `CLIENT_SECRET` environment variables.
+`CLIENT_ID`, `CLIENT_SECRET`, `SCOPES` and `REQUIRE_SCOPE=1` environment variables.
 
 ## secret-target-demo
 

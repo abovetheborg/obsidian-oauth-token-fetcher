@@ -13,11 +13,13 @@ connection** to open a form, and the row icons to fetch now, edit, or delete.
 **Fetch all now** refreshes every connection. The form has:
 
 - **Name** — display label only.
-- **Token URL** — the OAuth2 token endpoint (client_credentials grant).
+- **Token URL** — the OAuth2 token endpoint.
+- **Grant type** — OAuth2 `grant_type` sent with the request (default `client_credentials`).
 - **Client ID** — OAuth2 `client_id`.
 - **Client secret** — name of the SecretStorage entry holding the `client_secret`.
 - **Target secret** — name of the SecretStorage entry the fetched access token
   is written to. Other plugins read this via `app.secretStorage.getSecret(name)`.
+- **Scope** — optional space-delimited OAuth2 `scope` sent with the request.
 - **Refresh interval** — minutes between refreshes (default 60).
 - **Plugin to reload** — optional other enabled plugin that is reloaded after a
   successful refresh, so it picks up the new token.
@@ -104,7 +106,12 @@ npm test
 
 1. Build and watch: `npm install && npm run dev` (creates `main.js`, which the vault symlinks to).
 2. Start the mock endpoint in another terminal: `npm run mock-server`
-   (override with `PORT`, `CLIENT_ID`, `CLIENT_SECRET`).
+   (override with `PORT`, `CLIENT_ID`, `CLIENT_SECRET`, `SCOPES`, `REQUIRE_SCOPE=1`).
+   It follows RFC 6749 section 4.4: it requires `grant_type=client_credentials`,
+   accepts credentials in the form body or an HTTP Basic header, validates the
+   optional `scope` against `SCOPES` (default `read write`), and returns the
+   granted `scope` plus standard `invalid_request` / `invalid_client` /
+   `unsupported_grant_type` / `invalid_scope` errors.
 3. In Obsidian, open `test-vault/` as a vault and enable both community plugins
    (turn off Restricted Mode if prompted).
 4. In **OAuth Token Fetcher** settings, click "Add connection" and fill in the form:
@@ -112,6 +119,7 @@ npm test
    - Client ID: `test-client`
    - Client secret: a SecretStorage entry whose value is `test-secret`
    - Target secret: `tt-secret`
+   - Scope: `read` (optional)
 5. In **secret-target-demo** settings, set "Secret to display" to `tt-secret`.
 6. Click the row's refresh icon (or run `Fetch all OAuth tokens now`).
    To test the reload, set "Plugin to reload" to Secret Target Demo first; its

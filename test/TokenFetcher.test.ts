@@ -35,6 +35,44 @@ describe("TokenFetcher", () => {
 		expect(secrets.getSecret("my-app-token")).toBe("abc123");
 	});
 
+	it("sends a custom grant_type when one is configured", async () => {
+		const fetcher = new TokenFetcher(
+			{
+				tokenUrl: "https://internal.example.com/oauth/token",
+				grantType: "urn:custom:grant",
+				clientId: "my-client-id",
+				clientSecretName: "client-secret",
+				targetSecretName: "my-app-token",
+			},
+			server,
+			secrets,
+			{ info: () => undefined, error: () => undefined },
+		);
+
+		await fetcher.fetchAndStoreToken();
+
+		expect(server.requests[0].body.grant_type).toBe("urn:custom:grant");
+	});
+
+	it("includes the scope in the request when one is configured", async () => {
+		const fetcher = new TokenFetcher(
+			{
+				tokenUrl: "https://internal.example.com/oauth/token",
+				clientId: "my-client-id",
+				clientSecretName: "client-secret",
+				targetSecretName: "my-app-token",
+				extraParams: { scope: "read write" },
+			},
+			server,
+			secrets,
+			{ info: () => undefined, error: () => undefined },
+		);
+
+		await fetcher.fetchAndStoreToken();
+
+		expect(server.requests[0].body).toMatchObject({ grant_type: "client_credentials", scope: "read write" });
+	});
+
 	it("sends a client_credentials request with the resolved client secret", async () => {
 		const fetcher = makeFetcher();
 

@@ -3,11 +3,15 @@ export interface Connection {
 	/** Display label only */
 	name: string;
 	tokenUrl: string;
+	/** OAuth2 grant_type sent with the token request */
+	grantType: string;
 	clientId: string;
 	/** Name of the SecretStorage entry holding the client_secret */
 	clientSecretName: string;
 	/** Name of the SecretStorage entry the fetched access token is written to */
 	targetSecretName: string;
+	/** Space-delimited OAuth2 scope sent with the token request; empty = omit */
+	scope: string;
 	refreshIntervalMinutes: number;
 	/** ID of another plugin to reload after each successful refresh; empty = none */
 	reloadPluginId: string;
@@ -23,14 +27,18 @@ export interface OAuthTokenFetcherSettings {
 
 export const DEFAULT_SETTINGS: OAuthTokenFetcherSettings = { connections: [], debugMode: false };
 
+export const DEFAULT_GRANT_TYPE = "client_credentials";
+
 export function newConnection(): Connection {
 	return {
 		id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
 		name: "",
 		tokenUrl: "",
+		grantType: DEFAULT_GRANT_TYPE,
 		clientId: "",
 		clientSecretName: "",
 		targetSecretName: "",
+		scope: "",
 		refreshIntervalMinutes: 60,
 		reloadPluginId: "",
 		confirmBeforeReload: true,
