@@ -15,7 +15,8 @@ Run `npm run mock-server`, then in OAuth Token Fetcher settings use:
 - Scope: optional, e.g. `read` (the server allows `read write`)
 
 Each fetch issues a new `mock-token-N-...` value. Override with the `PORT`,
-`CLIENT_ID`, `CLIENT_SECRET`, `SCOPES` and `REQUIRE_SCOPE=1` environment variables.
+`CLIENT_ID`, `CLIENT_SECRET`, `SCOPES`, `REQUIRE_SCOPE=1` and `EXPIRES_IN` (seconds,
+default 3600; try `EXPIRES_IN=60` with "Refresh at token expiry" on) environment variables.
 
 ## secret-target-demo
 

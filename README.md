@@ -21,6 +21,10 @@ connection** to open a form, and the row icons to fetch now, edit, or delete.
   is written to. Other plugins read this via `app.secretStorage.getSecret(name)`.
 - **Scope** — optional space-delimited OAuth2 `scope` sent with the request.
 - **Refresh interval** — minutes between refreshes (default 60).
+- **Refresh at token expiry** — instead of a fixed interval, refresh when the
+  token's `expires_in` (seconds, RFC 6749) has elapsed. If the server omits
+  `expires_in`, or a fetch fails, the refresh interval is used. Waits are at
+  least 30 seconds, and the table shows "On expiry" for these connections.
 - **Plugin to reload** — optional other enabled plugin that is reloaded after a
   successful refresh, so it picks up the new token.
 - **Confirm before reloading** — ask for confirmation before that reload (default on).
@@ -106,7 +110,7 @@ npm test
 
 1. Build and watch: `npm install && npm run dev` (creates `main.js`, which the vault symlinks to).
 2. Start the mock endpoint in another terminal: `npm run mock-server`
-   (override with `PORT`, `CLIENT_ID`, `CLIENT_SECRET`, `SCOPES`, `REQUIRE_SCOPE=1`).
+   (override with `PORT`, `CLIENT_ID`, `CLIENT_SECRET`, `SCOPES`, `REQUIRE_SCOPE=1`, `EXPIRES_IN` seconds).
    It follows RFC 6749 section 4.4: it requires `grant_type=client_credentials`,
    accepts credentials in the form body or an HTTP Basic header, validates the
    optional `scope` against `SCOPES` (default `read write`), and returns the

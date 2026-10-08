@@ -6,6 +6,7 @@ const CLIENT_ID = process.env.CLIENT_ID ?? "test-client";
 const CLIENT_SECRET = process.env.CLIENT_SECRET ?? "test-secret";
 const SCOPES = (process.env.SCOPES ?? "read write").split(/\s+/).filter(Boolean);
 const REQUIRE_SCOPE = process.env.REQUIRE_SCOPE === "1";
+const EXPIRES_IN = Number(process.env.EXPIRES_IN ?? 3600);
 
 let counter = 0;
 
@@ -70,8 +71,8 @@ createServer((req, res) => {
 
 		const granted = requested.length > 0 ? requested : SCOPES;
 		const token = `mock-token-${++counter}-${Date.now()}`;
-		console.log(`200 issued ${token} (scope: ${granted.join(" ")})`);
-		send(res, 200, { access_token: token, token_type: "Bearer", expires_in: 3600, scope: granted.join(" ") });
+		console.log(`200 issued ${token} (scope: ${granted.join(" ")}, expires_in: ${EXPIRES_IN}s)`);
+		send(res, 200, { access_token: token, token_type: "Bearer", expires_in: EXPIRES_IN, scope: granted.join(" ") });
 	});
 }).listen(PORT, "127.0.0.1", () => {
 	console.log(`Mock token endpoint: http://localhost:${PORT}/token`);

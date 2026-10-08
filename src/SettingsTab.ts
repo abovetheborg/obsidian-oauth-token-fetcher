@@ -76,7 +76,7 @@ export class OAuthTokenFetcherSettingTab extends PluginSettingTab {
 		row.createEl("td", { text: connection.name || "Unnamed" });
 		row.createEl("td", { text: connection.tokenUrl || "Not set", cls: "oauth-fetcher-url" });
 		row.createEl("td", { text: connection.targetSecretName || "Not set" });
-		row.createEl("td", { text: `${connection.refreshIntervalMinutes} min` });
+		row.createEl("td", { text: connection.refreshOnExpiry ? "On expiry" : `${connection.refreshIntervalMinutes} min` });
 		row.createEl("td", reloadName ? { text: reloadName } : { text: "None", cls: "oauth-fetcher-muted" });
 
 		const actions = row.createEl("td").createDiv({ cls: "oauth-fetcher-actions" });

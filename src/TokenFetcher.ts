@@ -16,6 +16,11 @@ export interface TokenFetcherConfig {
 	extraParams?: Record<string, string>;
 }
 
+export interface TokenResult {
+	/** Lifetime in seconds from the token response's expires_in, or null when absent or invalid */
+	expiresInSeconds: number | null;
+}
+
 export interface Logger {
 	info(message: string): void;
 	error(message: string, error?: unknown): void;
@@ -38,7 +43,7 @@ export class TokenFetcher {
 		private readonly logger: Logger = consoleLogger,
 	) {}
 
-	async fetchAndStoreToken(): Promise<void> {
+	async fetchAndStoreToken(): Promise<TokenResult> {
 		const clientSecret = await this.secrets.getSecret(this.config.clientSecretName);
 		if (!clientSecret) {
 			throw new Error(
@@ -64,6 +69,14 @@ export class TokenFetcher {
 
 		await this.secrets.setSecret(this.config.targetSecretName, accessToken);
 		this.logger.info(`Stored refreshed token under secret "${this.config.targetSecretName}"`);
+		return { expiresInSeconds: this.extractExpiresIn(response.json) };
+	}
+
+	/** RFC 6749 expires_in is a number of seconds; some servers send it as a numeric string. */
+	private extractExpiresIn(body: unknown): number | null {
+		if (typeof body !== "object" || body === null) return null;
+		const value = Number((body as Record<string, unknown>).expires_in);
+		return Number.isFinite(value) && value > 0 ? value : null;
 	}
 
 	private extractAccessToken(body: unknown): string | null {

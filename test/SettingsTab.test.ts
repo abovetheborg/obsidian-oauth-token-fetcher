@@ -88,6 +88,12 @@ describe("OAuthTokenFetcherSettingTab", () => {
 		expect(cellText(second, COL.reload)).toBe("None");
 	});
 
+	it("shows the schedule as On expiry when refreshing at token expiry", () => {
+		const { tab } = render([conn({ refreshOnExpiry: true, refreshIntervalMinutes: 30 })]);
+
+		expect(cellText(rows(tab)[0], COL.refresh)).toBe("On expiry");
+	});
+
 	it("shows an empty state instead of a table when there are no connections", () => {
 		const { tab } = render([]);
 

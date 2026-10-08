@@ -54,6 +54,25 @@ describe("TokenFetcher", () => {
 		expect(server.requests[0].body.grant_type).toBe("urn:custom:grant");
 	});
 
+	it("reports expires_in as seconds, accepting numbers and numeric strings", async () => {
+		const fetcher = makeFetcher();
+
+		server.setDefaultResponse({ status: 200, json: { access_token: "a", expires_in: 3600 } });
+		expect(await fetcher.fetchAndStoreToken()).toEqual({ expiresInSeconds: 3600 });
+
+		server.setDefaultResponse({ status: 200, json: { access_token: "a", expires_in: "120" } });
+		expect(await fetcher.fetchAndStoreToken()).toEqual({ expiresInSeconds: 120 });
+	});
+
+	it("reports null when expires_in is missing or invalid", async () => {
+		const fetcher = makeFetcher();
+
+		for (const json of [{ access_token: "a" }, { access_token: "a", expires_in: 0 }, { access_token: "a", expires_in: "soon" }]) {
+			server.setDefaultResponse({ status: 200, json });
+			expect(await fetcher.fetchAndStoreToken()).toEqual({ expiresInSeconds: null });
+		}
+	});
+
 	it("includes the scope in the request when one is configured", async () => {
 		const fetcher = new TokenFetcher(
 			{

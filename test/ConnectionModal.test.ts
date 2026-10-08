@@ -45,6 +45,7 @@ describe("ConnectionModal", () => {
 			"Target secret",
 			"Scope",
 			"Refresh interval",
+			"Refresh at token expiry",
 			"Plugin to reload",
 			"Confirm before reloading",
 		]);
@@ -66,9 +67,13 @@ describe("ConnectionModal", () => {
 		const select = el(modal).querySelector("select") as HTMLSelectElement;
 		select.value = "demo";
 		select.dispatchEvent(new Event("change"));
-		const toggle = el(modal).querySelector('input[type="checkbox"]') as HTMLInputElement;
-		toggle.checked = false;
-		toggle.dispatchEvent(new Event("change"));
+		const [expiryToggle, confirmToggle] = Array.from(
+			el(modal).querySelectorAll('input[type="checkbox"]'),
+		) as HTMLInputElement[];
+		expiryToggle.checked = true;
+		expiryToggle.dispatchEvent(new Event("change"));
+		confirmToggle.checked = false;
+		confirmToggle.dispatchEvent(new Event("change"));
 
 		button(modal, "Save").click();
 		await flush();
@@ -83,6 +88,7 @@ describe("ConnectionModal", () => {
 			targetSecretName: "staging-token",
 			scope: "read write",
 			refreshIntervalMinutes: 15,
+			refreshOnExpiry: true,
 			reloadPluginId: "demo",
 			confirmBeforeReload: false,
 		});

@@ -8,6 +8,7 @@ import { ObsidianHttpClient } from "./ObsidianHttpClient";
 import { ObsidianSecretStore } from "./ObsidianSecretStore";
 import { InstalledPlugin, reloadAfterRefresh } from "./PluginReloader";
 import { Scheduler, WindowScheduler } from "./Scheduler";
+import { RefreshPlanner } from "./RefreshPlanner";
 import { DEFAULT_GRANT_TYPE, displayName, isConfigured, migrateSettings, OAuthTokenFetcherSettings } from "./settings";
 import { OAuthTokenFetcherSettingTab } from "./SettingsTab";
 import { consoleLogger, TokenFetcher } from "./TokenFetcher";
@@ -23,7 +24,10 @@ export default class OAuthTokenFetcherPlugin extends Plugin {
 	settings: OAuthTokenFetcherSettings = { connections: [], debugMode: false };
 	private debugLog = new DebugLog();
 	private scheduler: Scheduler = new WindowScheduler();
-	private cancelRefreshes: Array<() => void> = [];
+	private planner = new RefreshPlanner(
+		this.scheduler,
+		(id) => void this.fetchTokenNow(id, { notifyIfUnconfigured: false }),
+	);
 
 	async onload() {
 		await this.loadSettings();
@@ -48,7 +52,7 @@ export default class OAuthTokenFetcherPlugin extends Plugin {
 	}
 
 	onunload() {
-		this.cancelAllRefreshes();
+		this.planner.cancelAll();
 		this.debugLog.clear();
 	}
 
@@ -60,18 +64,9 @@ export default class OAuthTokenFetcherPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	/** Rebuilds one timer per connection; call after connections or intervals change. */
+	/** Rebuilds the refresh timers; call after connections or intervals change. */
 	rescheduleTokenRefresh(): void {
-		this.cancelAllRefreshes();
-		for (const c of this.settings.connections) {
-			const intervalMs = c.refreshIntervalMinutes * 60 * 1000;
-			this.cancelRefreshes.push(
-				this.scheduler.scheduleRepeating(
-					() => void this.fetchTokenNow(c.id, { notifyIfUnconfigured: false }),
-					intervalMs,
-				),
-			);
-		}
+		this.planner.rebuild(this.settings.connections);
 	}
 
 	listReloadablePlugins(): InstalledPlugin[] {
@@ -121,8 +116,10 @@ export default class OAuthTokenFetcherPlugin extends Plugin {
 		);
 
 		try {
-			await fetcher.fetchAndStoreToken();
+			const result = await fetcher.fetchAndStoreToken();
+			this.planner.afterFetch(connection, result.expiresInSeconds);
 		} catch (error) {
+			this.planner.afterFailure(connection);
 			this.debugLog.add(`FAILED "${label}": ${(error as Error).message}`);
 			console.error(`[oauth-token-fetcher] Failed to refresh token for "${label}"`, error);
 			new Notice(`OAuth Token Fetcher: failed to refresh "${label}" (${(error as Error).message})`);
@@ -137,10 +134,5 @@ export default class OAuthTokenFetcherPlugin extends Plugin {
 				consoleLogger,
 			);
 		}
-	}
-
-	private cancelAllRefreshes() {
-		this.cancelRefreshes.forEach((cancel) => cancel());
-		this.cancelRefreshes = [];
 	}
 }

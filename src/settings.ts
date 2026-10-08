@@ -13,6 +13,8 @@ export interface Connection {
 	/** Space-delimited OAuth2 scope sent with the token request; empty = omit */
 	scope: string;
 	refreshIntervalMinutes: number;
+	/** Schedule the next refresh from the response's expires_in instead of the fixed interval */
+	refreshOnExpiry: boolean;
 	/** ID of another plugin to reload after each successful refresh; empty = none */
 	reloadPluginId: string;
 	/** Ask the user before reloading that plugin */
@@ -40,6 +42,7 @@ export function newConnection(): Connection {
 		targetSecretName: "",
 		scope: "",
 		refreshIntervalMinutes: 60,
+		refreshOnExpiry: false,
 		reloadPluginId: "",
 		confirmBeforeReload: true,
 	};

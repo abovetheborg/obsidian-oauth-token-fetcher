@@ -60,6 +60,15 @@ export class ConnectionModal extends Modal {
 			);
 
 		new Setting(this.contentEl)
+			.setName("Refresh at token expiry")
+			.setDesc("Schedule the next refresh from the token's expires_in. Falls back to the interval if the server omits it.")
+			.addToggle((t) =>
+				t.setValue(c.refreshOnExpiry).onChange((value) => {
+					c.refreshOnExpiry = value;
+				}),
+			);
+
+		new Setting(this.contentEl)
 			.setName("Plugin to reload")
 			.setDesc("Reload this plugin after each token refresh so it picks up the new token.")
 			.addDropdown((d) => {
